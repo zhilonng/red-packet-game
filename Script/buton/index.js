@@ -4,7 +4,6 @@ var gameCom = require('common');
 import MatchVs from '../utils/matchvs'
 import XMLHttp from '../utils/XMLHttp'
 import CommonUtil from '../utils/CommonUtil'
-let instance = null;
 cc.Class({
     extends: cc.Component,
 
@@ -30,7 +29,7 @@ cc.Class({
     },
 	
 	onLoad() {
-		instance = this;
+		com.indexButton = this;
 		this._mvs = new MatchVs();
 		this._http = new XMLHttp();
 		this._common = new CommonUtil();
@@ -38,12 +37,13 @@ cc.Class({
 		this.buttonStarSlected.node.active = true;
 		this.buttonMe.node.active = true;
 		this.buttonMeSelected.node.active = false;
+
 	},
 
     buttonBeginClicked: function() {
-		this.showLoading(' 努力加载中... ');
+		// this.showLoading(' 努力加载中... ');
 		com.create_page.showNodeAnimation();
-		this.getCreaterRoomID();
+		// this.getCreaterRoomID();
     },
 	
 	loadingClicked: function() {
@@ -51,7 +51,8 @@ cc.Class({
 	},
 	
 	showLoading(text) {
-		this.loading.active = true;
+		if (!this.loading.active)
+			this.loading.active = true;
 		this.loading.getChildByName('Label').getComponent(cc.Label).string = text;
 	},
 	
@@ -73,24 +74,29 @@ cc.Class({
 			alert('请选择金额与红包数量...');
 			return
 		}
-		
-		// showToast
-		var toast = Toast.makeText(' 正在为您努力创建游戏... ', Toast.LENGTH_SHORT);
-		toast.setGravity(Toast.CENTER, 0, 0);
-		//  显示
-		toast.show();
+		this.showLoading('正在为您努力创建游戏...');
 		this._creating = false;
 		// 防止再次创建
 		if (this._creating === true)
 			return;
 		
 		this._creating = true;
+		
+		this.createUserRoom();
+		// if (com.isWxMini) {
+// 			this.generateMiniOrder();
+// 		} else {
+// 			this.getorder();
+// 		}
+		
+	},
+	
+	payAndcreateGame() {
 		if (com.isWxMini) {
 			this.generateMiniOrder();
 		} else {
 			this.getorder();
 		}
-		
 	},
 
 	getCreaterRoomID() {
@@ -101,7 +107,18 @@ cc.Class({
 		this._http.post(this, url, tag, param1, param2);
 	},
 	
+	createUserRoom() {
+		let roomName = 'creater';
+		let maxPlayer = 2;
+		let mode = 0;
+		let canWatch = 1;
+		let visibility = 1;
+		let roomProperty = '白天模式';
+		this._mvs.createRoom(this, roomName, maxPlayer, mode, canWatch, visibility, roomProperty)
+	},
+	
 	createRoom() {
+		this.showLoading('请求创建房间...')
 		this._common.caculateValueAndMaxEnemyNum();
 		if (com.debug) {
 			com.gameinfo['mvs_id'] = '1899534';
@@ -114,11 +131,20 @@ cc.Class({
         if (sendEventRsp.status == 200) {
             console.log("发送消息成功");
         } else {
+			alert('通信异常，错误状态:' + sendEventRsp.status);
             console.log("发送消息失败 status"+sendEventRsp.status);
         }
     },
 	
-    
+	sendReadyInfo() {
+		this.showLoading('请求生成游戏...')
+		this._common.caculateValueAndMaxEnemyNum();
+		if (com.debug) {
+			com.gameinfo['mvs_id'] = '1899534';
+		}
+		var cpProto = '{"event":"is_ready_to_create_room"}';
+		this._mvs.sendEventEx(this, cpProto);
+	},
 	
 	couldBegin() {
 		if (com.redPackNum === 0 || com.money === 0) {
@@ -152,13 +178,11 @@ cc.Class({
     createRoomResponse(CreateRoomRsp) {
 		this._creating = false;
 		if (CreateRoomRsp.status == 200) {
-			com.roomID = CreateRoomRsp.roomID;
-			this.pay();
+			com.createrRoomId = CreateRoomRsp.roomID
+			this.sendReadyInfo();
 			// cc.director.loadScene('match');
 		} else {
-			var toast = Toast.makeText(' 创建游戏失败，请联系客服... ', Toast.LENGTH_SHORT);
-			toast.setGravity(Toast.CENTER, 0, 0);
-			toast.show();
+			this.showLoading('创建游戏失败，错误id：1')
 		}
     },
 	
@@ -197,8 +221,8 @@ cc.Class({
     getorder() {
   	  var url = com.url + '/mobile.php?s=pay/pay';
   	  var tag = 'pay';
-  	  var url_href = window.location.href;
   	  var param1 = 'total_fee='+com.money+'&user_id='+com.userid+'&redPacketNum='+com.redPackNum + '&value=' + gameCom.value + '&level=' + com.level;
+	  
 	  var param2 = [];
   	  this._http.post(this, url ,tag, param1, param2);
     },
@@ -219,16 +243,21 @@ cc.Class({
             }
 			com.orderid = data.orderid;
 			com.realOrderId = data.realOrderid;
-            if (typeof WeixinJSBridge == "undefined") {
-                if (document.addEventListener) {
-                    document.addEventListener('WeixinJSBridgeReady', this.onBridgeReady, false);
-                } else if (document.attachEvent) {
-                    document.attachEvent('WeixinJSBridgeReady', this.onBridgeReady);
-                    document.attachEvent('onWeixinJSBridgeReady', this.onBridgeReady);
-                }
-            } else {
-                this.onBridgeReady(data);
-            }
+			if (com.debug) {
+				this.paysuccess()
+			} else {
+	            if (typeof WeixinJSBridge == "undefined") {
+	                if (document.addEventListener) {
+	                    document.addEventListener('WeixinJSBridgeReady', this.onBridgeReady, false);
+	                } else if (document.attachEvent) {
+	                    document.attachEvent('WeixinJSBridgeReady', this.onBridgeReady);
+	                    document.attachEvent('onWeixinJSBridgeReady', this.onBridgeReady);
+	                }
+	            } else {
+	                this.onBridgeReady(data);
+	            }
+			}
+            
 		}else if (tag === 'payMini') {
 			var data = eval('(' + data + ')');
             if(data.code!=0){
@@ -250,8 +279,10 @@ cc.Class({
 		} else if (tag === 'orderid') {
 			console.log(data);
 		} else if (tag === 'payover') {
+			console.log('payover')
+			console.log(data)
 			var data = eval('(' + data + ')');
-			if (data.code == 0) {
+			if (data.code === 0) {
 				alert(data.message);
 			}
 		} else if (tag === 'orderStatus') {
@@ -274,7 +305,7 @@ cc.Class({
 	
 	naviToMini() {
 		if (wx !== 'undefined') {
-			let path = '/pages/component/pay/pay?orderid=' + com.orderid;
+			let path = '/pages/pay/pay?orderid=' + com.orderid;
 			wx.miniProgram.navigateTo({
 				url : path
 			}); 
@@ -290,7 +321,7 @@ cc.Class({
 	},
 	
 	unscheduleOrderStatus() {
-		this.unschedule(this.checkOrderStatus);	
+		this.unschedule(this.checkOrderStatus);
 	},
 	
 	sendTimerToCheckOrder() {
@@ -299,19 +330,19 @@ cc.Class({
 	},
 
    onBridgeReady(sdata) {
-		instance.createRoom();
         WeixinJSBridge.invoke(
             'getBrandWCPayRequest', sdata,
             function (res) {
-                // console.log(111,res);
-                if (res.err_msg == "get_brand_wcpay_request:ok") {
-                    paysuccess();
+				// this.checkOrderStatus();
+                if(res.err_msg == "get_brand_wcpay_request:ok" ){
+                    com.indexButton.paysuccess();
                 }     // 使用以上方式判断前端返回,微信团队郑重提示：res.err_msg将在用户支付成功后返回    ok，但并不保证它绝对可靠。
             }
         );
     },
 
     paysuccess() {
+		this.createRoom();
 		var url = com.url + '/mobile.php?s=pay/r_payover';
 		var tag = 'payover';
 		var param1 = 'orderid='+com.realOrderId;

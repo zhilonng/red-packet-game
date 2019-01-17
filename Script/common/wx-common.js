@@ -82,7 +82,7 @@ cc.Class({
     loginResponse(loginRsp) {
   	  if (loginRsp.status === 200) {
   		  console.log('恭喜你登录成功，来到Matchvs的世界，你已经成功的迈出了第一步，Hello World');
-		  console.log('isPlayer:' + com.isPlayer + 'roomID:' + com.roomID);
+		  com.initRoomID = loginRsp.roomID;
 		  var cur = cc.director.getRunningScene();
 		  if (cur._name === 'home') {
 			  this.loading.active = false;
@@ -125,13 +125,33 @@ cc.Class({
 				}
 				this._common.setGameInfo(data.info.red_packet_num, data.info.real_fee, data.info.level)
 				this._common.caculateValueAndMaxEnemyNum();
-				this._mvs.joinRoom(this, com.roomID, '');
+				com.shouldLeaveRoom = com.initRoomID == com.roomID
+				if (com.initRoomID == '0') {
+					this._mvs.joinRoom(this, com.roomID, '');
+				} else if (com.initRoomID == com.roomID) {
+					this._mvs.tryReconnect();
+				} else {
+					this._mvs.leaveRoom(this)
+				}
+				
 			}
 		}
 	},
 	
+    leaveRoomResponse(leaveRoomRsp) {
+        if (leaveRoomRsp.status == 200) {
+  		  matchCom.isInRoom = false;
+		  com.shouldLeaveRoom = false;
+  		  this._mvs.joinRoom(this, com.roomID, '');
+        } else {
+  		  alert("离开房间失败"+leaveRoomRsp.status);
+        }
+    },
+	
 	joinRoomResponse(status, userInfoList, roomInfo) {
 	    if (status === 200) {
+			matchCom.isInRoom = true;
+			matchCom.enterRoomID = com.roomID;
 	        console.log("进入房间成功");
 	        console.log("房间用户列表：", userInfoList);
 	        console.log("房间信息：", roomInfo);

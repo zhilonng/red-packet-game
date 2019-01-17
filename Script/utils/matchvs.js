@@ -21,6 +21,7 @@ export default class MatchVs {
 	  this.DeviceID = 'abcdef';
 	  this.gatewayID = 0;
 	  this.gameVersion = 1;
+	  this.isReconnecting = false;
   }
   
   login(obj, mvs_id=null, mvs_token=null) {
@@ -37,6 +38,7 @@ export default class MatchVs {
 	  this.rsp.gameServerNotify = this.gameServerNotify.bind(this);
 	  this.rsp.sendEventResponse = this.sendEventResponse.bind(this);
 	  this.rsp.errorResponse = this.errorResponse.bind(this);
+	  this.rsp.reconnectResponse = this.reconnectResponse.bind(this);
 	  this.engine.init(this.rsp,'Matchvs','release',this.gameID);
   }
   
@@ -57,11 +59,31 @@ export default class MatchVs {
 	  console.log('错误信息：' + error);
 	  switch(error) {
 	  	case 1001:
-			this.engine.reconnect();
+			alert(error);
+			this.tryReconnect();
 			break;
 		case 201:
 			this.engine.joinRoom(com.roomID, '断线重连');
 			break;
+	  }
+  }
+  
+  tryReconnect() {
+	  if (this.isReconnecting) {
+		  return;
+	  }
+	  this.isReconnecting = true;
+	  this.engine.reconnect();
+  }
+  
+  reconnectResponse(status,roomUserInfoList,roomInfo) {
+	  alert('reconnect:' + status)
+	  this.isReconnecting = false;
+	  if(status == 200) {
+		  alert('重连成功')
+	  } else {
+		  this.tryReconnect();
+		  console.log("重连失败"+status);
 	  }
   }
   
@@ -148,6 +170,10 @@ export default class MatchVs {
   }
   
   joinRoom(obj, roomID, userProfile) {
+	  if (com.isPlayer && match.isInRoom && roomID == match.enterRoomID) {
+		  alert('已经在房间里');
+		  return;
+	  }
 	  this.rsp.joinRoomResponse = obj.joinRoomResponse.bind(obj);
 	  console.log('user try enter room :' + roomID);
 	  var result = this.engine.joinRoom(roomID, userProfile);
@@ -193,10 +219,13 @@ export default class MatchVs {
 			gameCom.overWindow.setData(gameCom.packetNum, gameCom.score, 1);
 			break;
 		case 'user_creater_room_success' :
-			alert('user_creater_room_success');
 			com.roomID = info.roomID;
 			com.step = "player";
 			this.leaveRoom(this);
+			break;
+		case 'server_is_ready' :
+			console.log('server_is_ready');
+			com.indexButton.payAndcreateGame();
 			break;
 	  }
       
@@ -228,6 +257,7 @@ export default class MatchVs {
   
   leaveRoomResponse(leaveRoomRsp) {
       if (leaveRoomRsp.status == 200) {
+		  match.isInRoom = false;
 		  this.joinRoom(this, com.roomID, 'palyer');
       } else {
 		  alert("离开房间失败"+leaveRoomRsp.status);
@@ -253,6 +283,7 @@ export default class MatchVs {
   		  return;
   	  } else if (tag === 'userinfo') {
   	  } else if (tag === 'roomid') {
+		  com.indexButton.hideLoading();
 		  cc.director.loadScene('match');
 	  }
     } 

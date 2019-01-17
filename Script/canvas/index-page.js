@@ -18,6 +18,7 @@ cc.Class({
 		avatarSprite: cc.Sprite,
 		nameLabel: cc.Label,
 		gameNode: cc.Node,
+		bottom: cc.Node,
     },
 
     // LIFE-CYCLE CALLBACKS:
@@ -56,6 +57,10 @@ cc.Class({
 	init() {
 		var moveTop = cc.moveBy(0.5, cc.v2(this.top.x, -150));
 		this.top.runAction(moveTop);
+		
+		if (window.__wxjs_environment == 'miniprogram') {
+			this.bottom.y += 62;
+		}
 	},
 
     start () {

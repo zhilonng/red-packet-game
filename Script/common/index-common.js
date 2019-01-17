@@ -1,5 +1,5 @@
 module.exports = {
-	debug : true,
+	debug : false,
 	frame: 0,
 	userid:-1,
 	userinfo: [],
@@ -10,6 +10,7 @@ module.exports = {
 	create_page: null,
 	me_page: null,
 	index_page: null,
+	indexButton: null,
 	screenHeight: null,
 	screenWidth: null,
 	url: 'https://game.cj102.com',
@@ -23,4 +24,6 @@ module.exports = {
 	step: '',
 	isWxMini: false,
 	session: null,
+	initRoomID: '0',
+	shouldLeaveRoom: false
 }; 

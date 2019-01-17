@@ -3,4 +3,6 @@ module.exports = {
 	countDown: 30,
 	couldBegin: false,
 	isOwner: false,
+	isInRoom: false,
+	enterRoomID: '',
 }; 
